@@ -1,48 +1,40 @@
-import { useState } from "react";
+import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 
-export default function Fetch() {
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
+const ENDPOINT_URL = 'https://app.hubform.com.br/f/dciPUSaeE98gY1LJ';
 
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState("");
+export default function ContactForm() {
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState('idle');
 
-  function submit(e) {
-    // This will prevent page refresh
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setStatus('submitting');
 
-    // replace this with your own unique endpoint URL
-    fetch("https://app.hubform.com.br/f/dciPUSaeE98gY1LJ", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json"
-      },
-      body: JSON.stringify({ email: email, message: message })
-    })
-      .then((res) => res.json())
-      .then((res) => {
-        if (res.ok) {
-          setSubmitted(true);
-        } else {
-          setError(res.message);
-        }
-      })
-      .catch((error) => setError(error));
-  }
+    try {
+      const response = await fetch(ENDPOINT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, message }),
+      });
 
-  if (error) {
-    return <p>{error}</p>;
-  }
+      if (!response.ok) throw new Error('Falha na requisição');
 
-  if (submitted) {
+      setStatus('success');
+    } catch (error) {
+      setStatus('error');
+    }
+  };
+
+  if (status === 'success') {
     return <p>Recebemos sua mensagem, obrigado por entrar em contato!</p>;
   }
 
   return (
-    <form onSubmit={submit}>
-      <label htmlFor="email">Email</label>
-      <input
+    <form onSubmit={handleSubmit}>
+      <FormField
+        label="Email"
         id="email"
         type="email"
         value={email}
@@ -50,17 +42,32 @@ export default function Fetch() {
         required
         placeholder="Digite seu email"
       />
-
-      <label htmlFor="message">Message</label>
-      <textarea
+      <FormField
+        label="Mensagem"
         id="message"
+        as="textarea"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         required
         placeholder="Digite sua mensagem"
       />
-
-      <button type="submit">Enviar</button>
+      {status === 'error' && <p>Erro ao enviar. Tente novamente.</p>}
+      <button type="submit" disabled={status === 'submitting'}>
+        {status === 'submitting' ? 'Enviando...' : 'Enviar'}
+      </button>
     </form>
   );
 }
+
+const FormField = ({ label, id, as: Component = 'input', ...props }) => (
+  <div>
+    <label htmlFor={id}>{label}</label>
+    <Component id={id} name={id} {...props} />
+  </div>
+);
+
+FormField.propTypes = {
+  label: PropTypes.string.isRequired,
+  id: PropTypes.string.isRequired,
+  as: PropTypes.oneOfType([PropTypes.string, PropTypes.elementType]),
+};
